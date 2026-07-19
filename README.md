@@ -142,6 +142,44 @@ plt.ylabel("Objective value")
 plt.grid(True)
 ```
 
+## LHS/Sobol'初期サンプリング（試作）
+
+元の`LHS-FMA.py`および`Sobol-FMA.py`と同様に，単位超立方体上で
+サンプルを生成し，各変数の連続範囲へスケーリングした値を返します．
+離散化，one-hot encoding，ブラックボックス関数の評価は呼び出し側で
+行います．
+
+```python
+from amplify_bbopt_ext.initial_sampling import sobol_initial_samples
+
+initial_x = sobol_initial_samples(
+    lower_bounds=[0.0, -5.0],
+    upper_bounds=[1.0, 5.0],
+    n_samples=32,
+    seed=42,
+    scramble=True,
+)
+```
+
+Sobol'では任意の正の`n_samples`を指定できます．ただし，balance特性を
+保つため，`n_samples = 2**m`を推奨します．2のべき乗でない場合は，処理を
+停止せず警告を表示して指定された点数を生成します．
+
+離散変数やカテゴリ変数には，単位超立方体上のサンプルを候補値へ写像します．
+
+```python
+from amplify_bbopt_ext.initial_sampling import (
+    map_unit_samples_to_discrete,
+    sobol_unit_samples,
+    warn_if_incomplete_marginal_coverage,
+)
+
+variable_values = [[10, 20, 30], ["red", "green", "blue"]]
+unit_x = sobol_unit_samples(2, 8, seed=42)
+initial_x = map_unit_samples_to_discrete(unit_x, variable_values)
+coverage = warn_if_incomplete_marginal_coverage(initial_x, variable_values)
+```
+
 ## インストール
 
 ```bash
