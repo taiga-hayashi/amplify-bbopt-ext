@@ -240,6 +240,43 @@ def warn_if_incomplete_marginal_coverage(
     return report
 
 
+def warn_if_incomplete_continuous_coverage(
+    continuous_samples: ArrayLike,
+    lower_bounds: ArrayLike,
+    upper_bounds: ArrayLike,
+    n_bins: int | Sequence[int],
+) -> MarginalCoverage:
+    """Warn, without stopping execution, when continuous candidate coverage is incomplete."""
+    samples = np.asarray(continuous_samples)
+    lower = np.asarray(lower_bounds)
+    upper = np.asarray(upper_bounds)
+    
+    if samples.ndim != 2:
+        raise ValueError("continuous_samples must be a 2D array")
+    n_variables = samples.shape[1]
+    
+    if isinstance(n_bins, int):
+        n_bins_list = [n_bins] * n_variables
+    else:
+        n_bins_list = list(n_bins)
+        
+    if len(n_bins_list) != n_variables or len(lower) != n_variables or len(upper) != n_variables:
+        raise ValueError("Lengths of lower_bounds, upper_bounds, and n_bins must match n_variables")
+        
+    bin_values = [np.arange(b) for b in n_bins_list]
+    discrete_indices = np.empty_like(samples, dtype=int)
+    
+    for i in range(n_variables):
+        bin_edges = np.linspace(lower[i], upper[i], n_bins_list[i] + 1)
+        discrete_indices[:, i] = np.clip(
+            np.digitize(samples[:, i], bin_edges) - 1,
+            0,
+            n_bins_list[i] - 1,
+        )
+        
+    return warn_if_incomplete_marginal_coverage(discrete_indices, bin_values)
+
+
 def generate(
     method: str,
     n_samples: int,
@@ -293,5 +330,6 @@ __all__ = [
     "scale_continuous_samples",
     "sobol_initial_samples",
     "sobol_unit_samples",
+    "warn_if_incomplete_continuous_coverage",
     "warn_if_incomplete_marginal_coverage",
 ]
