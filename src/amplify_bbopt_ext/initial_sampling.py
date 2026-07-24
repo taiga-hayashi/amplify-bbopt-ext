@@ -240,10 +240,52 @@ def warn_if_incomplete_marginal_coverage(
     return report
 
 
+def generate(
+    method: str,
+    n_samples: int,
+    *,
+    lower_bounds: ArrayLike | None = None,
+    upper_bounds: ArrayLike | None = None,
+    variable_values: Sequence[Sequence[object]] | None = None,
+    seed: int | np.random.Generator | None = None,
+    scramble: bool = True,
+) -> NDArray[np.generic]:
+    """Generate initial samples using LHS or Sobol' sequences.
+    
+    If lower_bounds and upper_bounds are provided, it generates continuous samples.
+    If variable_values is provided, it generates discrete/categorical mapped samples
+    and automatically checks marginal coverage.
+    """
+    method = method.lower()
+    if method not in {"lhs", "sobol"}:
+        raise ValueError("method must be 'lhs' or 'sobol'")
+        
+    if variable_values is not None:
+        n_variables = len(variable_values)
+        if method == "lhs":
+            unit_samples = lhs_unit_samples(n_variables, n_samples, seed=seed)
+        else:
+            unit_samples = sobol_unit_samples(n_variables, n_samples, seed=seed, scramble=scramble)
+            
+        mapped = map_unit_samples_to_discrete(unit_samples, variable_values)
+        warn_if_incomplete_marginal_coverage(mapped, variable_values)
+        return mapped
+        
+    elif lower_bounds is not None and upper_bounds is not None:
+        if method == "lhs":
+            return lhs_initial_samples(lower_bounds, upper_bounds, n_samples, seed=seed)
+        else:
+            return sobol_initial_samples(lower_bounds, upper_bounds, n_samples, seed=seed, scramble=scramble)
+            
+    else:
+        raise ValueError("Either (lower_bounds, upper_bounds) or variable_values must be provided")
+
+
 __all__ = [
     "MarginalCoverage",
     "MarginalCoverageWarning",
     "SobolBalanceWarning",
+    "generate",
     "lhs_initial_samples",
     "lhs_unit_samples",
     "map_unit_samples_to_discrete",
