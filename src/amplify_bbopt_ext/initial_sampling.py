@@ -26,21 +26,7 @@ class SobolBalanceWarning(UserWarning):
     """Warning emitted when a Sobol' sample count is not a power of two."""
 
 
-class MarginalCoverageWarning(UserWarning):
-    """Warning emitted when mapped discrete samples miss candidate values."""
 
-
-@dataclass(frozen=True)
-class MarginalCoverage:
-    """Candidate values covered and missed in each discrete variable."""
-
-    covered: tuple[NDArray[np.generic], ...]
-    missing: tuple[NDArray[np.generic], ...]
-
-    @property
-    def is_complete(self) -> bool:
-        """Return whether every candidate value occurs at least once."""
-        return all(values.size == 0 for values in self.missing)
 
 
 def _validate_sampling_shape(n_variables: int, n_samples: int) -> None:
@@ -204,77 +190,13 @@ def map_unit_samples_to_discrete(
     return mapped
 
 
-def marginal_coverage(
-    discrete_samples: ArrayLike,
-    variable_values: Sequence[Sequence[object]],
-) -> MarginalCoverage:
-    """Report covered and missing candidates for each discrete variable."""
-    samples = np.asarray(discrete_samples)
-    candidates = _validate_candidates(variable_values)
-    if samples.ndim != 2 or samples.shape[1] != len(candidates):
-        raise ValueError(
-            "discrete_samples must have shape (n_samples, len(variable_values))"
-        )
-    covered = tuple(np.unique(samples[:, column]) for column in range(samples.shape[1]))
-    missing = tuple(
-        values[~np.isin(values, covered[column])]
-        for column, values in enumerate(candidates)
-    )
-    return MarginalCoverage(covered=covered, missing=missing)
 
 
-def warn_if_incomplete_marginal_coverage(
-    discrete_samples: ArrayLike,
-    variable_values: Sequence[Sequence[object]],
-) -> MarginalCoverage:
-    """Warn, without stopping execution, when candidate coverage is incomplete."""
-    report = marginal_coverage(discrete_samples, variable_values)
-    if not report.is_complete:
-        missing_counts = [int(values.size) for values in report.missing]
-        warnings.warn(
-            "Complete marginal coverage was not obtained; missing candidate "
-            f"counts per variable: {missing_counts}.",
-            MarginalCoverageWarning,
-            stacklevel=2,
-        )
-    return report
 
 
-def warn_if_incomplete_continuous_coverage(
-    continuous_samples: ArrayLike,
-    lower_bounds: ArrayLike,
-    upper_bounds: ArrayLike,
-    n_bins: int | Sequence[int],
-) -> MarginalCoverage:
-    """Warn, without stopping execution, when continuous candidate coverage is incomplete."""
-    samples = np.asarray(continuous_samples)
-    lower = np.asarray(lower_bounds)
-    upper = np.asarray(upper_bounds)
-    
-    if samples.ndim != 2:
-        raise ValueError("continuous_samples must be a 2D array")
-    n_variables = samples.shape[1]
-    
-    if isinstance(n_bins, int):
-        n_bins_list = [n_bins] * n_variables
-    else:
-        n_bins_list = list(n_bins)
-        
-    if len(n_bins_list) != n_variables or len(lower) != n_variables or len(upper) != n_variables:
-        raise ValueError("Lengths of lower_bounds, upper_bounds, and n_bins must match n_variables")
-        
-    bin_values = [np.arange(b) for b in n_bins_list]
-    discrete_indices = np.empty_like(samples, dtype=int)
-    
-    for i in range(n_variables):
-        bin_edges = np.linspace(lower[i], upper[i], n_bins_list[i] + 1)
-        discrete_indices[:, i] = np.clip(
-            np.digitize(samples[:, i], bin_edges) - 1,
-            0,
-            n_bins_list[i] - 1,
-        )
-        
-    return warn_if_incomplete_marginal_coverage(discrete_indices, bin_values)
+
+
+
 
 
 def generate(
@@ -290,8 +212,7 @@ def generate(
     """Generate initial samples using LHS or Sobol' sequences.
     
     If lower_bounds and upper_bounds are provided, it generates continuous samples.
-    If variable_values is provided, it generates discrete/categorical mapped samples
-    and automatically checks marginal coverage.
+    If variable_values is provided, it generates discrete/categorical mapped samples.
     """
     method = method.lower()
     if method not in {"lhs", "sobol"}:
@@ -305,7 +226,16 @@ def generate(
             unit_samples = sobol_unit_samples(n_variables, n_samples, seed=seed, scramble=scramble)
             
         mapped = map_unit_samples_to_discrete(unit_samples, variable_values)
-        warn_if_incomplete_marginal_coverage(mapped, variable_values)
+        
+        # Check marginal coverage
+        m = len(variable_values[0])
+        if n_samples % m != 0:
+            warnings.warn(
+                "初期データ数と分割数が合っていないため，完全な網羅性は保証されません．",
+                UserWarning,
+                stacklevel=2,
+            )
+            
         return mapped
         
     elif lower_bounds is not None and upper_bounds is not None:
@@ -319,17 +249,12 @@ def generate(
 
 
 __all__ = [
-    "MarginalCoverage",
-    "MarginalCoverageWarning",
     "SobolBalanceWarning",
     "generate",
     "lhs_initial_samples",
     "lhs_unit_samples",
     "map_unit_samples_to_discrete",
-    "marginal_coverage",
     "scale_continuous_samples",
     "sobol_initial_samples",
     "sobol_unit_samples",
-    "warn_if_incomplete_continuous_coverage",
-    "warn_if_incomplete_marginal_coverage",
 ]
