@@ -15,6 +15,7 @@ Fixstars Amplify BBOptに基づいた，ブラックボックス離散最適化�
 このライブラリでは，ブラックボックス離散最適化問題のために研究・開発した以下の最適化手法をAmplify BBOptに基づいて実装しています．
 
 - [SWIFT-FMQA](./examples/fmqa_latest.ipynb)
+- [LHS/Sobol'-FMQA](./examples/lhs_sobol_fmqa.ipynb)
 - （今後も追加予定）
 
 国立研究開発法人産業技術総合研究所量子・AI融合技術グローバル研究センター（G-QuAT）の保有する量子・古典融合計算基盤ABCI-Qのコンピューティングリソースを活用して，研究成果に基づく最適化手法を検証することができます．
