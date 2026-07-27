@@ -5,6 +5,7 @@ from amplify_bbopt.trainer import Dataset
 from numpy.typing import NDArray
 
 from .utils import BasicFMTrainer
+from .initial_sampling import generate
 
 
 class LatestDataset(Dataset):
@@ -89,11 +90,35 @@ def run(
     size_limit,
     k,
     n_iter,
-    initial_data,
-    epochs,
-    optimizer_params,
+    initial_data=None,
+    epochs=1000,
+    optimizer_params=None,
     lr_scheduler_class=None,
+    *,
+    sampling_method=None,
+    n_init_data=None,
+    lower_bounds=None,
+    upper_bounds=None,
+    variable_values=None,
+    seed=None,
+    scramble=True,
 ):
+    if optimizer_params is None:
+        optimizer_params = {"lr": 0.01}
+
+    if initial_data is None:
+        if sampling_method is None or n_init_data is None:
+            raise ValueError("Either initial_data or both sampling_method and n_init_data must be provided.")
+        initial_data = generate(
+            method=sampling_method,
+            n_samples=n_init_data,
+            lower_bounds=lower_bounds,
+            upper_bounds=upper_bounds,
+            variable_values=variable_values,
+            seed=seed,
+            scramble=scramble,
+        )
+
     dataset_x = initial_data.copy()
     dataset_y = np.array([bb_func(x) for x in dataset_x])
     my_trainer = BasicFMTrainer()
