@@ -34,7 +34,7 @@ from amplify_bbopt import (
     blackbox,
 )
 from amplify import FixstarsClient
-from amplify_bbopt_ext.latest_filter import run
+from amplify_bbopt_ext.runner import run
 
 from datetime import timedelta
 import numpy as np
