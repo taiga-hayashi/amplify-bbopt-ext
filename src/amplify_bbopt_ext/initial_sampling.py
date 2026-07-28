@@ -33,11 +33,16 @@ def generate(
         unit_samples = sampler.random(n=n_samples)
     elif method == "sobol":
         sampler = qmc.Sobol(d=n_dim, scramble=scramble, rng=seed)
-        unit_samples = (
-            sampler.random_base2(m=n_samples.bit_length() - 1)
-            if (n_samples & (n_samples - 1) == 0)
-            else sampler.random(n=n_samples)
-        )
+        if (n_samples & (n_samples - 1) == 0):
+            unit_samples = sampler.random_base2(m=n_samples.bit_length() - 1)
+        else:
+            warnings.warn(
+                "Sobol' balance properties are guaranteed for n_samples = 2**m; "
+                f"generating the requested n_samples={n_samples} with random(n).",
+                UserWarning,
+                stacklevel=2,
+            )
+            unit_samples = sampler.random(n=n_samples)
     else:
         # Default to uniform random
         rng = np.random.default_rng(seed)
