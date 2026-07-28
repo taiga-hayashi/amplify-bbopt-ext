@@ -24,7 +24,7 @@ def generate(
     if variable_values is not None:
         n_dim = len(variable_values)
     elif lower_bounds is not None and upper_bounds is not None:
-        n_dim = len(lower_bounds)
+        n_dim = len(np.asarray(lower_bounds))
     else:
         raise ValueError("Either variable_values or (lower_bounds, upper_bounds) must be provided.")
 
@@ -66,6 +66,7 @@ def generate(
             )
         return initial_data
     else:
+        assert lower_bounds is not None and upper_bounds is not None
         return qmc.scale(unit_samples, lower_bounds, upper_bounds)
 
 
